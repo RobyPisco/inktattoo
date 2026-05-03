@@ -137,6 +137,15 @@ select:focus{border-color:var(--acc)}
 #sr.ok{background:rgba(68,204,136,.1);color:var(--grn)}
 #sr.fail{background:rgba(255,68,102,.1);color:var(--red)}
 
+/* TOAST */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--panel);border:1px solid var(--red);color:var(--red);padding:9px 18px;border-radius:8px;font-size:12px;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:200;white-space:nowrap;letter-spacing:.3px}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.ok{border-color:var(--grn);color:var(--grn)}
+
+/* CREDIT */
+#credit{padding:13px 20px;border-top:1px solid var(--bdr);text-align:center;font-size:9px;color:var(--muted);letter-spacing:.6px;flex-shrink:0}
+#credit strong{color:var(--acc);font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+
 /* LOADING */
 #loadOverlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(13,13,18,.85);backdrop-filter:blur(4px);z-index:20;gap:12px}
 #loadOverlay p{font-size:12px;color:var(--muted);letter-spacing:1px}
@@ -209,6 +218,7 @@ select:focus{border-color:var(--acc)}
         <div class="cr h" id="trrow">
           <div class="cl">Tremor Intensity <em id="tv">2</em></div>
           <input type="range" id="tremor" min="1" max="8" value="2" step="0.5">
+          <button class="btn bfw" id="newSeed" style="margin-top:7px">↻ New Variation</button>
         </div>
       </div>
     </div>
@@ -356,6 +366,7 @@ select:focus{border-color:var(--acc)}
     </div>
 
   </div>
+  <div id="credit">Made with ♥ by <strong>piscofactory</strong></div>
 </aside>
 
 <!-- MAIN -->
@@ -398,6 +409,7 @@ select:focus{border-color:var(--acc)}
   </div>
 </main>
 
+<div id="toast"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 'use strict';
@@ -406,6 +418,24 @@ select:focus{border-color:var(--acc)}
 const $ = id => document.getElementById(id);
 const fmt = s => { const m = Math.floor(s/60), ss = Math.floor(s%60).toString().padStart(2,'0'); return `${m}:${ss}`; };
 const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+let _toastTimer;
+function showToast(msg, ok = false) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.toggle('ok', ok);
+  t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+function lsGet(key, fallback = '{}') {
+  try { return JSON.parse(localStorage.getItem(key) || fallback); } catch { return JSON.parse(fallback); }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, typeof val === 'string' ? val : JSON.stringify(val)); }
+  catch { showToast('Could not save — storage full or private mode'); }
+}
+
 function seededRNG(seed) {
   let s = seed >>> 0;
   return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };
@@ -479,6 +509,10 @@ document.addEventListener('keydown', e => {
 let rawData = null;
 
 async function loadAudio(file) {
+  if (file.size > 100 * 1024 * 1024) {
+    showToast('File too large (> 100 MB). Try a smaller file.');
+    return;
+  }
   S.fileName = file.name;
   $('fn').textContent = '▶ ' + file.name;
   $('fn').classList.remove('h');
@@ -490,7 +524,6 @@ async function loadAudio(file) {
   try {
     const decoded = await tmpCtx.decodeAudioData(ab);
     S.audioBuffer = decoded;
-    // Render through OfflineAudioContext for clean amplitude data
     const off = new OfflineAudioContext(1, decoded.length, decoded.sampleRate);
     const src = off.createBufferSource();
     src.buffer = decoded;
@@ -502,11 +535,12 @@ async function loadAudio(file) {
     $('playbtn').disabled = false;
     updateTimeEl(0, decoded.duration);
     $('loadOverlay').classList.add('h');
+    showToast('Audio loaded: ' + file.name, true);
     render(); hPush();
   } catch(err) {
     $('loadOverlay').classList.add('h');
     $('nom').classList.remove('h');
-    alert('Could not decode audio: ' + err.message);
+    showToast('Could not decode audio: ' + err.message);
   }
   tmpCtx.close();
 }
@@ -976,6 +1010,9 @@ document.addEventListener('keydown', e => {
 // ─── SECTION COLLAPSE ─────────────────────────────────────────────────────────
 function togS(hd) { hd.closest('.sec').classList.toggle('cls'); }
 
+// ─── VARIATION SEED ───────────────────────────────────────────────────────────
+$('newSeed').onclick = () => { S.seed = (Math.random() * 99999) | 0; render(); hPush(); };
+
 // ─── EXPORT ───────────────────────────────────────────────────────────────────
 async function expSVG() {
   const { svgStr } = await buildSVG();
@@ -1039,14 +1076,15 @@ $('expPdf').onclick = expPDF;
 function savePreset() {
   const name = $('preName').value.trim();
   if (!name) return;
-  const saved = JSON.parse(localStorage.getItem('inkPresets') || '{}');
+  const saved = lsGet('inkPresets');
   saved[name] = cloneS();
-  localStorage.setItem('inkPresets', JSON.stringify(saved));
+  lsSet('inkPresets', saved);
   $('preName').value = '';
+  showToast('Preset saved: ' + name, true);
   renderPresets();
 }
 function loadPreset(name) {
-  const saved = JSON.parse(localStorage.getItem('inkPresets') || '{}');
+  const saved = lsGet('inkPresets');
   if (!saved[name]) return;
   Object.assign(S, JSON.parse(saved[name]));
   if (rawData) resample();
@@ -1055,13 +1093,13 @@ function loadPreset(name) {
   hPush();
 }
 function deletePreset(name) {
-  const saved = JSON.parse(localStorage.getItem('inkPresets') || '{}');
+  const saved = lsGet('inkPresets');
   delete saved[name];
-  localStorage.setItem('inkPresets', JSON.stringify(saved));
+  lsSet('inkPresets', saved);
   renderPresets();
 }
 function renderPresets() {
-  const saved = JSON.parse(localStorage.getItem('inkPresets') || '{}');
+  const saved = lsGet('inkPresets');
   $('plist').innerHTML = '';
   Object.keys(saved).forEach(name => {
     const div = document.createElement('div');
