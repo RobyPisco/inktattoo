@@ -2,7 +2,7 @@
 
 > Turn any audio file into a tattoo-ready waveform artwork. Export as SVG, high-res PNG or PDF — ready to hand to your tattoo artist.
 
-**[→ Try it live](#)** · Made by [piscofactory](https://github.com/RobyPisco)
+**[→ Try it live](https://robypisco.github.io/inktattoo/)** · Made by [piscofactory](https://github.com/RobyPisco)
 
 ---
 
