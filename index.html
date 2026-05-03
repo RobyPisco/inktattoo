@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InkTattoo — Audio Waveform Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@300;400;500;600&family=Courier+Prime:wght@700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d12;--sb:#14141c;--panel:#1c1c28;--bdr:#252535;
+  --acc:#8b7fff;--acc2:#5a4fcf;--txt:#e4e4f0;--muted:#7070a0;
+  --red:#ff4466;--grn:#44cc88;--sw:310px;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--txt);display:flex}
+
+/* SIDEBAR */
+#sb{width:var(--sw);min-width:var(--sw);background:var(--sb);border-right:1px solid var(--bdr);display:flex;flex-direction:column;overflow:hidden}
+#logo{padding:16px 20px 12px;border-bottom:1px solid var(--bdr);flex-shrink:0}
+#logo h1{font-size:16px;font-weight:700;letter-spacing:3px;color:var(--acc);text-transform:uppercase}
+#logo p{font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:1px}
+#sbc{flex:1;overflow-y:auto;padding-bottom:24px}
+#sbc::-webkit-scrollbar{width:3px}
+#sbc::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+
+/* SECTIONS */
+.sec{border-bottom:1px solid var(--bdr)}
+.shd{padding:10px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;font-size:10px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--muted);transition:color .2s}
+.shd:hover{color:var(--txt)}
+.ch{font-size:8px;transition:transform .2s}
+.sec.cls .ch{transform:rotate(-90deg)}
+.sec.cls .sbd{display:none}
+.sbd{padding:4px 20px 16px}
+
+/* CONTROLS */
+.cr{margin-bottom:12px}
+.cl{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);margin-bottom:5px}
+.cl em{color:var(--acc);font-style:normal;font-weight:600}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:2px;background:var(--bdr);border-radius:1px;outline:none;cursor:pointer;display:block}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;background:var(--acc);border-radius:50%;cursor:pointer;transition:transform .1s}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.3)}
+input[type=text],input[type=url],input[type=number]{width:100%;background:var(--panel);border:1px solid var(--bdr);color:var(--txt);padding:7px 11px;border-radius:6px;font-size:12px;font-family:inherit;outline:none;transition:border-color .2s}
+input[type=text]:focus,input[type=url]:focus,input[type=number]:focus{border-color:var(--acc)}
+select{width:100%;background:var(--panel);border:1px solid var(--bdr);color:var(--txt);padding:7px 11px;border-radius:6px;font-size:12px;font-family:inherit;outline:none;cursor:pointer}
+select:focus{border-color:var(--acc)}
+
+/* BUTTONS */
+.bg{display:flex;gap:5px;flex-wrap:wrap}
+.btn{flex:1;padding:7px 8px;background:var(--panel);border:1px solid var(--bdr);color:var(--muted);border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;transition:all .2s;text-align:center;white-space:nowrap;font-family:inherit}
+.btn:hover{border-color:var(--acc);color:var(--txt)}
+.btn.on{background:rgba(139,127,255,.18);border-color:var(--acc);color:var(--acc);font-weight:600}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.btn.pri:hover{background:#a092ff}
+.btn.sec2{background:var(--panel);border-color:var(--bdr);color:var(--txt)}
+.btn.sec2:hover{border-color:var(--acc)}
+.btn.dng{background:var(--red);border-color:var(--red);color:#fff}
+.btn.dng:hover{background:#ff6680}
+.bfw{width:100%;margin-bottom:7px}
+.ibr{display:flex;gap:5px}
+.ibr input{flex:1}
+.ibr .btn{flex:0;padding:7px 10px}
+.tc2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+
+/* UPLOAD */
+#upz{margin:14px 20px;border:2px dashed var(--bdr);border-radius:10px;padding:18px 12px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+#upz:hover,#upz.dov{border-color:var(--acc);background:rgba(139,127,255,.05)}
+#upz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+#upz .ui{font-size:24px;margin-bottom:6px}
+#upz .ut{font-size:12px;color:var(--muted)}
+#upz .ut strong{color:var(--acc)}
+#upz .uh{font-size:10px;color:var(--muted);margin-top:3px}
+#fn{font-size:10px;color:var(--grn);padding:2px 20px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* MODE TABS */
+#mtabs{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:10px 20px;border-bottom:1px solid var(--bdr)}
+.mb{padding:7px 5px;background:var(--panel);border:1px solid var(--bdr);color:var(--muted);border-radius:7px;font-size:10px;font-weight:500;cursor:pointer;transition:all .2s;text-align:center;font-family:inherit}
+.mb:hover{border-color:var(--acc);color:var(--txt)}
+.mb.on{background:rgba(139,127,255,.18);border-color:var(--acc);color:var(--acc);font-weight:700}
+
+/* TOGGLE */
+.tgr{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+.tgl{font-size:11px;color:var(--muted)}
+.tg{position:relative;width:34px;height:19px;flex-shrink:0}
+.tg input{opacity:0;width:0;height:0}
+.ts{position:absolute;inset:0;background:var(--bdr);border-radius:9px;cursor:pointer;transition:.2s}
+.ts::before{content:'';position:absolute;width:13px;height:13px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.tg input:checked+.ts{background:var(--acc)}
+.tg input:checked+.ts::before{transform:translateX(15px)}
+
+/* PRESET LIST */
+#plist{display:flex;flex-direction:column;gap:5px;margin-top:7px;max-height:160px;overflow-y:auto}
+.pi{display:flex;align-items:center;gap:5px;padding:5px 9px;background:var(--panel);border:1px solid var(--bdr);border-radius:6px}
+.pn{flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl{font-size:10px;color:var(--acc);cursor:pointer;padding:2px 4px}
+.pl:hover{text-decoration:underline}
+.pd{font-size:10px;color:var(--red);cursor:pointer;padding:2px 4px}
+.pd:hover{text-decoration:underline}
+
+/* MAIN */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#tb{display:flex;align-items:center;gap:6px;padding:9px 16px;border-bottom:1px solid var(--bdr);flex-shrink:0}
+.tbb{padding:5px 11px;background:var(--panel);border:1px solid var(--bdr);color:var(--muted);border-radius:6px;font-size:11px;cursor:pointer;transition:all .2s;font-family:inherit}
+.tbb:hover{border-color:var(--acc);color:var(--txt)}
+.tbb:disabled{opacity:.3;cursor:not-allowed}
+.sp{flex:1}
+#zi{font-size:11px;color:var(--muted);min-width:38px;text-align:center}
+
+/* PREVIEW */
+#pva{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;background:radial-gradient(ellipse at center,#181826 0%,var(--bg) 70%)}
+#pvw{position:relative;transform-origin:center;display:inline-block}
+#pvc{position:relative;display:inline-block;line-height:0}
+#pvc svg{display:block;box-shadow:0 4px 60px rgba(0,0,0,.7),0 0 0 1px var(--bdr)}
+#ph{position:absolute;top:0;width:1.5px;height:100%;pointer-events:none;z-index:10;display:none}
+#nom{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);pointer-events:none;user-select:none;z-index:5;background:rgba(13,13,18,.7);backdrop-filter:blur(2px)}
+#nom .ni{font-size:44px;margin-bottom:10px}
+#nom p{font-size:13px;margin-top:4px}
+#nom .hint{font-size:11px;color:rgba(112,112,160,.6);margin-top:4px}
+
+/* PLAYBACK */
+#pb{display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid var(--bdr);flex-shrink:0}
+#playbtn{width:34px;height:34px;background:var(--acc);border:none;border-radius:50%;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+#playbtn:hover{background:#a092ff;transform:scale(1.06)}
+#playbtn:disabled{background:var(--bdr);cursor:not-allowed;transform:none}
+#td{font-size:11px;color:var(--muted);min-width:72px;font-variant-numeric:tabular-nums}
+#pgc{flex:1;height:3px;background:var(--bdr);border-radius:2px;cursor:pointer;position:relative}
+#pgf{height:100%;background:var(--acc);border-radius:2px;width:0;pointer-events:none}
+#phcb{display:flex;gap:4px}
+.phco{width:15px;height:15px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:border-color .2s;flex-shrink:0}
+.phco.on{border-color:var(--txt)}
+
+/* MISC */
+.tag{display:inline-block;padding:1px 5px;background:rgba(139,127,255,.15);border-radius:3px;font-size:9px;color:var(--acc);margin-left:4px}
+.h{display:none!important}
+#sr{font-size:11px;margin-top:5px;padding:4px 8px;border-radius:4px}
+#sr.ok{background:rgba(68,204,136,.1);color:var(--grn)}
+#sr.fail{background:rgba(255,68,102,.1);color:var(--red)}
+
+/* LOADING */
+#loadOverlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(13,13,18,.85);backdrop-filter:blur(4px);z-index:20;gap:12px}
+#loadOverlay p{font-size:12px;color:var(--muted);letter-spacing:1px}
+.spinner{width:32px;height:32px;border:2px solid var(--bdr);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:700px){
+  body{flex-direction:column}
+  #sb{width:100%;min-width:0;height:50vh;border-right:none;border-bottom:1px solid var(--bdr)}
+  #main{height:50vh}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside id="sb">
+  <div id="logo">
+    <h1>◆ InkTattoo</h1>
+    <p>Audio Waveform Tattoo Generator</p>
+  </div>
+  <div id="sbc">
+
+    <div id="upz">
+      <input type="file" id="fi" accept=".mp3,.wav,.ogg,.m4a,.aac,audio/*">
+      <div class="ui">🎵</div>
+      <div class="ut"><strong>Drop audio</strong> or click to upload</div>
+      <div class="uh">MP3 · WAV · OGG · M4A · AAC</div>
+    </div>
+    <div id="fn" class="h"></div>
+
+    <div id="mtabs">
+      <button class="mb on" data-m="horizontal">▐ Horizontal</button>
+      <button class="mb" data-m="circular">◎ Circular</button>
+      <button class="mb" data-m="rorschach">⬧ Rorschach</button>
+      <button class="mb" data-m="constellation">✦ Stars</button>
+    </div>
+
+    <!-- Horizontal -->
+    <div id="sec-horizontal" class="sec">
+      <div class="shd" onclick="togS(this)">Horizontal Style <span class="ch">▾</span></div>
+      <div class="sbd">
+        <div class="cr">
+          <div class="cl">Render Style</div>
+          <div class="bg">
+            <button class="btn on" data-bs="sharp">Bars</button>
+            <button class="btn" data-bs="mirrored">Mirrored</button>
+            <button class="btn" data-bs="strokes">Strokes</button>
+            <button class="btn" data-bs="silhouette">Filled</button>
+          </div>
+        </div>
+        <div class="cr" id="barShapeRow">
+          <div class="cl">Bar Shape</div>
+          <div class="bg">
+            <button class="btn on" data-bsh="sharp">Sharp</button>
+            <button class="btn" data-bsh="rounded">Rounded</button>
+          </div>
+        </div>
+        <div class="cr h" id="silSmoothRow">
+          <div class="cl">Smoothness <em id="smthv">50</em></div>
+          <input type="range" id="silSmoothS" min="0" max="100" value="50">
+        </div>
+        <div class="cr">
+          <div class="cl">Stroke</div>
+          <div class="bg">
+            <button class="btn on" data-ss="clean">Clean</button>
+            <button class="btn" data-ss="organic">Organic</button>
+          </div>
+        </div>
+        <div class="cr h" id="trrow">
+          <div class="cl">Tremor Intensity <em id="tv">2</em></div>
+          <input type="range" id="tremor" min="1" max="8" value="2" step="0.5">
+        </div>
+      </div>
+    </div>
+
+    <!-- Circular -->
+    <div id="sec-circular" class="sec h">
+      <div class="shd" onclick="togS(this)">Circular Options <span class="ch">▾</span></div>
+      <div class="sbd">
+        <div class="cr">
+          <div class="cl">Inner Radius <em id="irv">50</em>px</div>
+          <input type="range" id="innerR" min="20" max="150" value="50">
+        </div>
+        <div class="cr">
+          <div class="cl">Bar Length <em id="blv">80</em>px</div>
+          <input type="range" id="barL" min="20" max="200" value="80">
+        </div>
+        <div class="cr">
+          <div class="cl">Rotation <em id="rov">0</em>°</div>
+          <input type="range" id="rotO" min="0" max="360" value="0">
+        </div>
+      </div>
+    </div>
+
+    <!-- Rorschach -->
+    <div id="sec-rorschach" class="sec h">
+      <div class="shd" onclick="togS(this)">Rorschach Options <span class="ch">▾</span></div>
+      <div class="sbd">
+        <div class="cr">
+          <div class="cl">Gap <em id="rgv">20</em>px</div>
+          <input type="range" id="rGap" min="0" max="100" value="20">
+        </div>
+      </div>
+    </div>
+
+    <!-- Constellation -->
+    <div id="sec-constellation" class="sec h">
+      <div class="shd" onclick="togS(this)">Constellation Options <span class="ch">▾</span></div>
+      <div class="sbd">
+        <div class="tgr">
+          <span class="tgl">Connecting Lines</span>
+          <label class="tg"><input type="checkbox" id="showL" checked><span class="ts"></span></label>
+        </div>
+        <div class="cr">
+          <div class="cl">Min Dot <em id="dminv">2</em></div>
+          <input type="range" id="dotMin" min="1" max="10" value="2">
+        </div>
+        <div class="cr">
+          <div class="cl">Max Dot <em id="dmaxv">8</em></div>
+          <input type="range" id="dotMax" min="2" max="20" value="8">
+        </div>
+        <div class="cr">
+          <div class="cl">Line Opacity <em id="lopv">50</em>%</div>
+          <input type="range" id="lineOp" min="5" max="100" value="50">
+        </div>
+      </div>
+    </div>
+
+    <!-- Waveform -->
+    <div class="sec">
+      <div class="shd" onclick="togS(this)">Waveform <span class="ch">▾</span></div>
+      <div class="sbd">
+        <div class="cr">
+          <div class="cl">Bars / Points <em id="nbv">80</em></div>
+          <input type="range" id="numB" min="20" max="200" value="80">
+        </div>
+        <div class="cr">
+          <div class="cl">Spacing <em id="spv">2</em>px</div>
+          <input type="range" id="spac" min="0" max="14" value="2">
+        </div>
+        <div class="cr">
+          <div class="cl">Stroke Width <em id="swv">2</em></div>
+          <input type="range" id="stkW" min="0.5" max="8" value="2" step="0.5">
+        </div>
+        <div class="cr">
+          <div class="cl">Padding <em id="padv">20</em>px</div>
+          <input type="range" id="padS" min="0" max="60" value="20">
+        </div>
+        <div class="cr">
+          <div class="cl">Analysis Mode</div>
+          <div class="bg">
+            <button class="btn on" data-am="peak">Peak</button>
+            <button class="btn" data-am="rms">RMS</button>
+          </div>
+        </div>
+        <div class="cr">
+          <div class="cl">Smoothing <em id="smv">0</em></div>
+          <input type="range" id="smooth" min="0" max="12" value="0" step="1">
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="sec">
+      <div class="shd" onclick="togS(this)">Canvas <span class="ch">▾</span></div>
+      <div class="sbd">
+        <div class="cr">
+          <div class="cl">Aspect Ratio</div>
+          <div class="bg">
+            <button class="btn on" data-ar="4:1">4:1</button>
+            <button class="btn" data-ar="2:1">2:1</button>
+            <button class="btn" data-ar="1:1">1:1</button>
+            <button class="btn" data-ar="custom">Custom</button>
+          </div>
+        </div>
+        <div id="cdims" class="h">
+          <div class="tc2" style="margin-top:7px">
+            <div><div class="cl">W (px)</div><input type="number" id="cwI" value="800" min="100" max="3000"></div>
+            <div><div class="cl">H (px)</div><input type="number" id="chI" value="300" min="100" max="3000"></div>
+          </div>
+        </div>
+        <div class="cr" style="margin-top:10px">
+          <div class="cl">Color</div>
+          <div class="bg">
+            <button class="btn on" data-cs="bw">■ Black/White</button>
+            <button class="btn" data-cs="wb">□ White/Black</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export -->
+    <div class="sec">
+      <div class="shd" onclick="togS(this)">Export <span class="ch">▾</span></div>
+      <div class="sbd">
+        <div class="cr">
+          <div class="cl">Physical Width (cm)</div>
+          <input type="number" id="physW" value="15" min="1" max="100" step="0.5">
+        </div>
+        <button class="btn pri bfw" id="expSvg">⬇ Export SVG</button>
+        <button class="btn sec2 bfw" id="expPng">⬇ Export PNG (300 dpi)</button>
+        <button class="btn sec2 bfw" id="expPdf">⬇ Export PDF</button>
+      </div>
+    </div>
+
+    <!-- Presets -->
+    <div class="sec">
+      <div class="shd" onclick="togS(this)">Presets <span class="ch">▾</span></div>
+      <div class="sbd">
+        <div class="ibr" style="margin-bottom:8px">
+          <input type="text" id="preName" placeholder="Preset name...">
+          <button class="btn" id="savePre">Save</button>
+        </div>
+        <div id="plist"></div>
+      </div>
+    </div>
+
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main id="main">
+  <div id="tb">
+    <button class="tbb" id="undoBtn" disabled title="Ctrl+Z">↩ Undo</button>
+    <button class="tbb" id="redoBtn" disabled title="Ctrl+Y">↪ Redo</button>
+    <div class="sp"></div>
+    <button class="tbb" id="zoOut">−</button>
+    <span id="zi">100%</span>
+    <button class="tbb" id="zoIn">+</button>
+    <button class="tbb" id="zoRst">Fit</button>
+  </div>
+
+  <div id="pva">
+    <div id="nom">
+      <div class="ni">🎵</div>
+      <p>Upload an audio file to begin</p>
+      <div class="hint">Drag &amp; drop · MP3, WAV, OGG, M4A, AAC</div>
+    </div>
+    <div id="loadOverlay" class="h">
+      <div class="spinner"></div>
+      <p>Analyzing audio...</p>
+    </div>
+    <div id="pvw">
+      <div id="pvc"></div>
+      <div id="ph"></div>
+    </div>
+  </div>
+
+  <div id="pb">
+    <button id="playbtn" disabled>▶</button>
+    <span id="td">0:00 / 0:00</span>
+    <div id="pgc"><div id="pgf"></div></div>
+    <div id="phcb">
+      <div class="phco on" data-phc="red" style="background:#ff4466" title="Red playhead"></div>
+      <div class="phco" data-phc="white" style="background:#fff" title="White playhead"></div>
+      <div class="phco" data-phc="black" style="background:#111;border:1px solid #555" title="Black playhead"></div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+'use strict';
+
+// ─── HELPERS ────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = s => { const m = Math.floor(s/60), ss = Math.floor(s%60).toString().padStart(2,'0'); return `${m}:${ss}`; };
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function seededRNG(seed) {
+  let s = seed >>> 0;
+  return () => { s = (Math.imul(1664525, s) + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const S = {
+  mode: 'horizontal',
+  audioData: null,      // Float32Array, normalized 0-1
+  audioBuffer: null,    // AudioBuffer for playback
+  fileName: '',
+  // Horizontal
+  barStyle: 'sharp',   // 'sharp' | 'mirrored' | 'strokes' | 'silhouette'
+  barShape: 'sharp',   // 'sharp' | 'rounded'  (only for bars/mirrored)
+  strokeStyle: 'clean',
+  tremor: 2,
+  silSmooth: 50,       // silhouette smoothness 0-100
+  // Circular
+  innerR: 50, barL: 80, rotO: 0,
+  // Rorschach
+  rGap: 20,
+  // Constellation
+  showLines: true, dotMin: 2, dotMax: 8, lineOp: 0.5,
+  // General waveform
+  numBars: 80, spacing: 2, strokeW: 2, pad: 20, useRMS: false, smooth: 0,
+  // Canvas
+  ar: '4:1', cw: 800, ch: 300, cs: 'bw',
+  // Playhead
+  phColor: 'red',
+  // Export
+  physW: 15,
+  // Stable tremor seed for this session
+  seed: (Math.random() * 99999) | 0,
+};
+
+function cloneS() {
+  const o = {...S, audioData: null, audioBuffer: null};
+  return JSON.stringify(o);
+}
+
+// ─── HISTORY ─────────────────────────────────────────────────────────────────
+const H = { stack: [], idx: -1 };
+function hPush() {
+  H.stack = H.stack.slice(0, H.idx + 1);
+  H.stack.push(cloneS());
+  if (H.stack.length > 60) H.stack.shift();
+  H.idx = H.stack.length - 1;
+  hRefreshUI();
+}
+function hRefreshUI() {
+  $('undoBtn').disabled = H.idx <= 0;
+  $('redoBtn').disabled = H.idx >= H.stack.length - 1;
+}
+function hApply(idx) {
+  H.idx = Math.max(0, Math.min(H.stack.length - 1, idx));
+  Object.assign(S, JSON.parse(H.stack[H.idx]));
+  if (rawData) resample();
+  syncUI();
+  render();
+  hRefreshUI();
+}
+$('undoBtn').onclick = () => H.idx > 0 && hApply(H.idx - 1);
+$('redoBtn').onclick = () => H.idx < H.stack.length - 1 && hApply(H.idx + 1);
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.ctrlKey && e.key === 'z') { e.preventDefault(); H.idx > 0 && hApply(H.idx - 1); }
+  if (e.ctrlKey && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); H.idx < H.stack.length - 1 && hApply(H.idx + 1); }
+});
+
+// ─── AUDIO ───────────────────────────────────────────────────────────────────
+let rawData = null;
+
+async function loadAudio(file) {
+  S.fileName = file.name;
+  $('fn').textContent = '▶ ' + file.name;
+  $('fn').classList.remove('h');
+  $('loadOverlay').classList.remove('h');
+  $('nom').classList.add('h');
+
+  const ab = await file.arrayBuffer();
+  const tmpCtx = new AudioContext();
+  try {
+    const decoded = await tmpCtx.decodeAudioData(ab);
+    S.audioBuffer = decoded;
+    // Render through OfflineAudioContext for clean amplitude data
+    const off = new OfflineAudioContext(1, decoded.length, decoded.sampleRate);
+    const src = off.createBufferSource();
+    src.buffer = decoded;
+    src.connect(off.destination);
+    src.start(0);
+    const rendered = await off.startRendering();
+    rawData = rendered.getChannelData(0);
+    resample();
+    $('playbtn').disabled = false;
+    updateTimeEl(0, decoded.duration);
+    $('loadOverlay').classList.add('h');
+    render(); hPush();
+  } catch(err) {
+    $('loadOverlay').classList.add('h');
+    $('nom').classList.remove('h');
+    alert('Could not decode audio: ' + err.message);
+  }
+  tmpCtx.close();
+}
+
+function resample() {
+  if (!rawData) return;
+  const n = S.numBars;
+  const bs = Math.max(1, Math.floor(rawData.length / n));
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const st = i * bs, en = Math.min(st + bs, rawData.length);
+    if (S.useRMS) {
+      let sum = 0;
+      for (let j = st; j < en; j++) sum += rawData[j] * rawData[j];
+      out[i] = Math.sqrt(sum / (en - st));
+    } else {
+      let mx = 0;
+      for (let j = st; j < en; j++) { const v = Math.abs(rawData[j]); if (v > mx) mx = v; }
+      out[i] = mx;
+    }
+  }
+  // Normalize
+  const peak = Math.max(...out, 1e-6);
+  for (let i = 0; i < n; i++) out[i] /= peak;
+  // Smoothing: moving average over ±k neighbors
+  const k = Math.round(S.smooth);
+  if (k > 0) {
+    const sm = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      let sum = 0, cnt = 0;
+      for (let j = Math.max(0, i - k); j <= Math.min(n - 1, i + k); j++) { sum += out[j]; cnt++; }
+      sm[i] = sum / cnt;
+    }
+    S.audioData = sm;
+  } else {
+    S.audioData = out;
+  }
+}
+
+function placeholder(n) {
+  const a = new Float32Array(n);
+  for (let i = 0; i < n; i++) a[i] = 0.15 + 0.75 * Math.pow(Math.abs(Math.sin(i * 0.22 + 0.5)), 0.7);
+  const pk = Math.max(...a, 1e-6);
+  for (let i = 0; i < n; i++) a[i] /= pk;
+  return a;
+}
+
+// ─── DIMENSIONS / COLORS ─────────────────────────────────────────────────────
+function dims() {
+  switch (S.ar) {
+    case '4:1':   return { w: 800, h: 200 };
+    case '2:1':   return { w: 800, h: 400 };
+    case '1:1':   return { w: 500, h: 500 };
+    case 'custom': return { w: Math.max(100, S.cw | 0), h: Math.max(100, S.ch | 0) };
+    default:      return { w: 800, h: 200 };
+  }
+}
+function colors() {
+  return S.cs === 'wb' ? { fg: '#ffffff', bg: '#000000' } : { fg: '#000000', bg: '#ffffff' };
+}
+
+// ─── SVG GENERATORS ──────────────────────────────────────────────────────────
+
+// Catmull-Rom → cubic bezier smooth path
+// tension 0 = straight lines, 1 = standard CR, 2 = very smooth
+function crPath(pts, tension) {
+  const n = pts.length;
+  if (n === 0) return '';
+  let d = `M${f(pts[0].x)},${f(pts[0].y)}`;
+  if (tension < 0.01 || n < 3) {
+    for (let i = 1; i < n; i++) d += ` L${f(pts[i].x)},${f(pts[i].y)}`;
+    return d;
+  }
+  const t6 = tension / 6;
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[Math.min(n - 1, i + 2)];
+    const cp1x = p1.x + (p2.x - p0.x) * t6;
+    const cp1y = p1.y + (p2.y - p0.y) * t6;
+    const cp2x = p2.x - (p3.x - p1.x) * t6;
+    const cp2y = p2.y - (p3.y - p1.y) * t6;
+    d += ` C${f(cp1x)},${f(cp1y)} ${f(cp2x)},${f(cp2y)} ${f(p2.x)},${f(p2.y)}`;
+  }
+  return d;
+}
+
+// Continue an existing path (L instead of M) with Catmull-Rom
+function crContinue(pts, tension) {
+  if (pts.length === 0) return '';
+  const sub = crPath(pts, tension);
+  return 'L' + sub.slice(1); // replace M with L
+}
+
+function genHoriz(data, w, h, fg) {
+  const n = data.length, p = S.pad;
+  const aW = w - p * 2, aH = h - p * 2;
+  const sp = S.spacing;
+  const bW = Math.max(0.5, (aW - sp * (n - 1)) / n);
+  const organic = S.strokeStyle === 'organic';
+  const rng = organic ? seededRNG(S.seed) : null;
+  const ti = organic ? S.tremor : 0;
+  const rv = () => organic ? (rng() - 0.5) * 2 * ti : 0;
+
+  // ── FINE STROKES ───────────────────────────────────────────────
+  if (S.barStyle === 'strokes') {
+    const cy = h / 2;
+    const halfH = aH / 2 * 0.94;
+    const lw = Math.max(0.4, S.strokeW * 0.6);
+    let out = '';
+    for (let i = 0; i < n; i++) {
+      const amp = data[i];
+      const cx = p + i * (bW + sp) + bW / 2;
+      const hh = Math.max(0.5, amp * halfH);
+      const dx  = rv() * 0.4;
+      const dy1 = rv() * 0.8;
+      const dy2 = rv() * 0.8;
+      out += `<line x1="${f(cx+dx)}" y1="${f(cy-hh+dy1)}" x2="${f(cx+dx)}" y2="${f(cy+hh+dy2)}" stroke="${fg}" stroke-width="${f(lw)}" stroke-linecap="round"/>`;
+    }
+    return out;
+  }
+
+  // ── FILLED SILHOUETTE ──────────────────────────────────────────
+  if (S.barStyle === 'silhouette') {
+    const cy = h / 2;
+    const halfH = aH / 2 * 0.92;
+    const tension = S.silSmooth / 100 * 2; // 0→angular, 2→very smooth
+    const topPts = [], botPts = [];
+    for (let i = 0; i < n; i++) {
+      const x = p + i * (bW + sp) + bW / 2;
+      const hh = Math.max(1, data[i] * halfH);
+      topPts.push({ x, y: cy - hh });
+      botPts.push({ x, y: cy + hh });
+    }
+    // path: top L→R, then bottom R→L, closed
+    const topD = crPath(topPts, tension);
+    const botD = crContinue([...botPts].reverse(), tension);
+    return `<path d="${topD} ${botD} Z" fill="${fg}" stroke="none"/>`;
+  }
+
+  // ── BARS (sharp / rounded / mirrored) ─────────────────────────
+  const mirrored = S.barStyle === 'mirrored';
+  const rx = S.barShape === 'rounded' ? Math.min(bW / 2, 4) : 0;
+
+  // Wobbly rect via cubic bezier (organic mode)
+  function wobblyRect(x0, y0, x1, y1) {
+    const r = () => (rng() - 0.5) * 2 * ti;
+    const mx = (x0 + x1) / 2;
+    const tp = `M${f(x0+r()*0.3)},${f(y0+r())} C${f(mx+r())},${f(y0+r())} ${f(mx+r())},${f(y0+r())} ${f(x1+r()*0.3)},${f(y0+r())}`;
+    const re = `C${f(x1+r())},${f((y0+y1)/2+r())} ${f(x1+r())},${f((y0+y1)/2+r())} ${f(x1+r()*0.3)},${f(y1+r())}`;
+    const bt = `C${f(mx+r())},${f(y1+r())} ${f(mx+r())},${f(y1+r())} ${f(x0+r()*0.3)},${f(y1+r())}`;
+    const le = `C${f(x0+r())},${f((y0+y1)/2+r())} ${f(x0+r())},${f((y0+y1)/2+r())} ${f(x0+r()*0.3)},${f(y0+r())}`;
+    return `<path d="${tp} ${re} ${bt} ${le}Z" fill="${fg}"/>`;
+  }
+
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    const amp = data[i];
+    const bx = p + i * (bW + sp);
+    if (mirrored) {
+      const cy = h / 2, hh = Math.max(1, amp * (aH / 2) * 0.94);
+      if (organic) { out += wobblyRect(bx, cy - hh, bx + bW, cy + hh); }
+      else { out += `<rect x="${f(bx)}" y="${f(cy-hh)}" width="${f(bW)}" height="${f(hh*2)}" rx="${rx}" fill="${fg}"/>`; }
+    } else {
+      const bH = Math.max(1, amp * aH * 0.92);
+      const by = p + aH - bH;
+      if (organic) { out += wobblyRect(bx, by, bx + bW, by + bH); }
+      else { out += `<rect x="${f(bx)}" y="${f(by)}" width="${f(bW)}" height="${f(bH)}" rx="${rx}" fill="${fg}"/>`; }
+    }
+  }
+  return out;
+}
+
+function genCircular(data, w, h, fg) {
+  const cx = w / 2, cy = h / 2;
+  const n = data.length;
+  const rotRad = S.rotO * Math.PI / 180;
+  const organic = S.strokeStyle === 'organic';
+  const rng = organic ? seededRNG(S.seed) : null;
+  const ti = organic ? S.tremor : 0;
+
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    const angle = rotRad + (i / n) * Math.PI * 2;
+    const amp = data[i];
+    const r1 = S.innerR, r2 = S.innerR + amp * S.barL;
+    const ca = Math.cos(angle), sa = Math.sin(angle);
+    let x2 = cx + r2 * ca, y2 = cy + r2 * sa;
+    if (organic && rng) { x2 += (rng() - 0.5) * ti * 2; y2 += (rng() - 0.5) * ti * 2; }
+    out += `<line x1="${f(cx + r1*ca)}" y1="${f(cy + r1*sa)}" x2="${f(x2)}" y2="${f(y2)}" stroke="${fg}" stroke-width="${S.strokeW}" stroke-linecap="round"/>`;
+  }
+  return out;
+}
+
+function genRorschach(data, w, h, fg) {
+  const n = data.length, p = S.pad;
+  const gap = S.rGap;
+  const aW = w - p * 2;
+  const halfH = (h - gap) / 2 - p;
+  const sp = S.spacing;
+  const bW = Math.max(0.5, (aW - sp * (n - 1)) / n);
+  const topBase = h / 2 - gap / 2;
+  const botBase = h / 2 + gap / 2;
+
+  // ── SILHOUETTE RORSCHACH ────────────────────────────────────────
+  if (S.barStyle === 'silhouette') {
+    const tension = S.silSmooth / 100 * 2;
+    const topInner = [], topOuter = [];
+    const botInner = [], botOuter = [];
+    for (let i = 0; i < n; i++) {
+      const x = p + i * (bW + sp) + bW / 2;
+      const bH = Math.max(1, data[i] * halfH * 0.92);
+      topInner.push({ x, y: topBase });
+      topOuter.push({ x, y: topBase - bH });
+      botInner.push({ x, y: botBase });
+      botOuter.push({ x, y: botBase + bH });
+    }
+    // Top shape: outer (up) L→R, then inner (base) R→L
+    const topD = crPath(topOuter, tension) + ' ' + crContinue([...topInner].reverse(), tension) + ' Z';
+    // Bottom shape: inner (base) L→R, then outer (down) R→L
+    const botD = crPath(botOuter, tension) + ' ' + crContinue([...botInner].reverse(), tension) + ' Z';
+    return `<path d="${topD}" fill="${fg}" stroke="none"/><path d="${botD}" fill="${fg}" stroke="none"/>`;
+  }
+
+  // ── STROKES RORSCHACH ───────────────────────────────────────────
+  if (S.barStyle === 'strokes') {
+    const lw = Math.max(0.4, S.strokeW * 0.6);
+    const organic = S.strokeStyle === 'organic';
+    const rng = organic ? seededRNG(S.seed) : null;
+    const ti = organic ? S.tremor : 0;
+    let out = '';
+    for (let i = 0; i < n; i++) {
+      const amp = data[i];
+      const cx = p + i * (bW + sp) + bW / 2;
+      const bH = Math.max(0.5, amp * halfH * 0.92);
+      const dx  = organic ? (rng() - 0.5) * ti * 0.4 : 0;
+      const dy1 = organic ? (rng() - 0.5) * ti * 0.8 : 0;
+      const dy2 = organic ? (rng() - 0.5) * ti * 0.8 : 0;
+      out += `<line x1="${f(cx+dx)}" y1="${f(topBase-bH+dy1)}" x2="${f(cx+dx)}" y2="${f(topBase+dy2)}" stroke="${fg}" stroke-width="${f(lw)}" stroke-linecap="round"/>`;
+      out += `<line x1="${f(cx+dx)}" y1="${f(botBase+dy1)}" x2="${f(cx+dx)}" y2="${f(botBase+bH+dy2)}" stroke="${fg}" stroke-width="${f(lw)}" stroke-linecap="round"/>`;
+    }
+    return out;
+  }
+
+  // ── BARS ────────────────────────────────────────────────────────
+  const rx = S.barShape === 'rounded' ? Math.min(bW / 2, 4) : 0;
+  const organic = S.strokeStyle === 'organic';
+  const rng = organic ? seededRNG(S.seed) : null;
+  const ti = organic ? S.tremor : 0;
+  const dv = v => organic ? (rng() - 0.5) * 2 * v : 0;
+
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    const amp = data[i];
+    const bx = p + i * (bW + sp);
+    const bH = Math.max(1, amp * halfH * 0.92);
+    if (organic) {
+      const x0 = bx + dv(ti*0.3), x1 = bx + bW + dv(ti*0.3);
+      const ty = topBase - bH + dv(ti), ty1 = topBase + dv(ti*0.2);
+      out += `<path d="M${f(x0)},${f(ty)} L${f(x1)},${f(ty)} L${f(x1)},${f(ty1)} L${f(x0)},${f(ty1)}Z" fill="${fg}"/>`;
+      const by0 = botBase + dv(ti*0.2), by1 = botBase + bH + dv(ti);
+      out += `<path d="M${f(x0)},${f(by0)} L${f(x1)},${f(by0)} L${f(x1)},${f(by1)} L${f(x0)},${f(by1)}Z" fill="${fg}"/>`;
+    } else {
+      out += `<rect x="${f(bx)}" y="${f(topBase-bH)}" width="${f(bW)}" height="${f(bH)}" rx="${rx}" fill="${fg}"/>`;
+      out += `<rect x="${f(bx)}" y="${f(botBase)}" width="${f(bW)}" height="${f(bH)}" rx="${rx}" fill="${fg}"/>`;
+    }
+  }
+  return out;
+}
+
+function genConstellation(data, w, h, fg) {
+  const n = data.length, p = S.pad;
+  const aW = w - p * 2;
+  const cy = h / 2;
+  const step = aW / Math.max(1, n - 1);
+  const dmin = S.dotMin, dmax = S.dotMax;
+
+  const pts = data.map((amp, i) => ({
+    x: p + i * step,
+    y: cy - amp * (h - p * 2) / 2 * 0.9,
+    r: dmin + amp * (dmax - dmin)
+  }));
+
+  let out = '';
+  if (S.showLines && pts.length > 1) {
+    let pd = `M${f(pts[0].x)},${f(pts[0].y)}`;
+    for (let i = 1; i < pts.length; i++) pd += ` L${f(pts[i].x)},${f(pts[i].y)}`;
+    out += `<path d="${pd}" fill="none" stroke="${fg}" stroke-width="${f(S.strokeW * 0.5)}" stroke-opacity="${S.lineOp}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }
+  for (const pt of pts) {
+    out += `<circle cx="${f(pt.x)}" cy="${f(pt.y)}" r="${f(pt.r)}" fill="${fg}"/>`;
+  }
+  return out;
+}
+
+// ─── MAIN SVG BUILDER ─────────────────────────────────────────────────────────
+
+async function buildSVG() {
+  const { w, h } = dims();
+  const { fg, bg } = colors();
+  const data = S.audioData || placeholder(S.numBars);
+
+  let waveRaw = '';
+  switch (S.mode) {
+    case 'horizontal':    waveRaw = genHoriz(data, w, h, fg); break;
+    case 'circular':      waveRaw = genCircular(data, w, h, fg); break;
+    case 'rorschach':     waveRaw = genRorschach(data, w, h, fg); break;
+    case 'constellation': waveRaw = genConstellation(data, w, h, fg); break;
+  }
+
+  const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+    width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <rect width="${w}" height="${h}" fill="${bg}"/>
+    ${waveRaw}
+  </svg>`;
+
+  return { svgStr, svgW: w, svgH: h, waveX: 0, waveW: w };
+}
+
+function f(n) { return parseFloat(n.toFixed(2)); }
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+// Version counter prevents stale renders from overwriting a newer result
+let renderVer = 0;
+let renderQueued = false;
+// Tracks wave position within SVG for correct playhead placement
+let lastLayout = { waveX: 0, waveW: 800, svgW: 800 };
+
+function render() {
+  ++renderVer;
+  if (renderQueued) return; // already scheduled; renderVer ensures freshness
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    const ver = renderVer; // snapshot: if render() is called again before buildSVG resolves, ver < renderVer
+    buildSVG().then(({ svgStr, waveX, waveW, svgW }) => {
+      if (renderVer !== ver) return; // stale — a newer render finished or is pending
+      lastLayout = { waveX, waveW, svgW };
+      $('pvc').innerHTML = svgStr;
+      const phColor = S.phColor === 'red' ? '#ff4466' : S.phColor === 'white' ? '#ffffff' : '#000000';
+      $('ph').style.background = phColor;
+    });
+  });
+}
+
+// ─── PLAYBACK ─────────────────────────────────────────────────────────────────
+let actx = null, srcNode = null, startAt = 0, offset = 0, playing = false, raf = null;
+
+function ensureACTX() {
+  if (!actx || actx.state === 'closed') actx = new AudioContext();
+  if (actx.state === 'suspended') actx.resume();
+}
+
+$('playbtn').onclick = () => playing ? pauseAudio() : playAudio();
+
+function playAudio() {
+  if (!S.audioBuffer) return;
+  ensureACTX();
+  if (srcNode) { try { srcNode.stop(); } catch(e){} }
+  srcNode = actx.createBufferSource();
+  srcNode.buffer = S.audioBuffer;
+  srcNode.connect(actx.destination);
+  startAt = actx.currentTime;
+  srcNode.start(0, offset);
+  srcNode.onended = () => {
+    if (!playing) return;
+    playing = false; offset = 0;
+    $('playbtn').innerHTML = '▶';
+    cancelAnimationFrame(raf);
+    setProgress(0);
+  };
+  playing = true;
+  $('playbtn').innerHTML = '⏸';
+  $('ph').style.display = 'block';
+  animPH();
+}
+
+function pauseAudio() {
+  if (!playing) return;
+  offset = Math.min(actx.currentTime - startAt + offset, S.audioBuffer.duration);
+  try { srcNode.stop(); } catch(e){}
+  playing = false;
+  $('playbtn').innerHTML = '▶';
+  cancelAnimationFrame(raf);
+}
+
+function seekAudio(frac) {
+  const dur = S.audioBuffer ? S.audioBuffer.duration : 0;
+  offset = frac * dur;
+  setProgress(frac);
+  if (playing) playAudio();
+  else updateTimeEl(offset, dur);
+}
+
+function animPH() {
+  if (!playing) return;
+  const dur = S.audioBuffer.duration;
+  const cur = actx.currentTime - startAt + offset;
+  const frac = Math.min(cur / dur, 1);
+  setProgress(frac);
+  raf = requestAnimationFrame(animPH);
+}
+
+function setProgress(frac) {
+  $('pgf').style.width = (frac * 100) + '%';
+  // Use natural SVG coordinates (pre-zoom) so the playhead stays in sync at any zoom level.
+  // waveX is the offset of the waveform inside the SVG (icon/QR may push it right).
+  const { waveX, waveW } = lastLayout;
+  $('ph').style.left = (waveX + frac * waveW) + 'px';
+  const dur = S.audioBuffer ? S.audioBuffer.duration : 0;
+  updateTimeEl(frac * dur, dur);
+}
+
+function updateTimeEl(cur, dur) {
+  $('td').textContent = `${fmt(cur)} / ${fmt(dur)}`;
+}
+
+// Progress bar click → seek
+$('pgc').addEventListener('click', e => {
+  if (!S.audioBuffer) return;
+  const r = $('pgc').getBoundingClientRect();
+  seekAudio((e.clientX - r.left) / r.width);
+});
+
+// SVG click → seek. Convert DOM px to SVG natural coords, then to fraction within wave.
+$('pvc').addEventListener('click', e => {
+  if (!S.audioBuffer) return;
+  const svg = $('pvc').querySelector('svg');
+  if (!svg) return;
+  const r = svg.getBoundingClientRect();
+  // zoom scale = rendered width / natural width
+  const natW = parseFloat(svg.getAttribute('width')) || r.width;
+  const scale = r.width / natW;
+  const svgX = (e.clientX - r.left) / scale; // click position in natural SVG coords
+  const { waveX, waveW } = lastLayout;
+  const frac = Math.max(0, Math.min(1, (svgX - waveX) / waveW));
+  seekAudio(frac);
+});
+
+// Playhead color
+document.querySelectorAll('.phco').forEach(el => el.onclick = () => {
+  document.querySelectorAll('.phco').forEach(e => e.classList.remove('on'));
+  el.classList.add('on');
+  S.phColor = el.dataset.phc;
+  const c = S.phColor === 'red' ? '#ff4466' : S.phColor === 'white' ? '#ffffff' : '#000000';
+  $('ph').style.background = c;
+});
+
+// ─── ZOOM ─────────────────────────────────────────────────────────────────────
+let zoom = 1;
+function setZoom(z) {
+  zoom = Math.max(0.1, Math.min(5, z));
+  $('pvw').style.transform = `scale(${zoom})`;
+  $('zi').textContent = Math.round(zoom * 100) + '%';
+}
+$('zoIn').onclick  = () => setZoom(zoom + 0.15);
+$('zoOut').onclick = () => setZoom(zoom - 0.15);
+$('zoRst').onclick = () => setZoom(1);
+$('pva').addEventListener('wheel', e => { e.preventDefault(); setZoom(zoom * (e.deltaY < 0 ? 1.1 : 0.9)); }, { passive: false });
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.ctrlKey && (e.key === '=' || e.key === '+')) { e.preventDefault(); setZoom(zoom + 0.15); }
+  if (e.ctrlKey && e.key === '-') { e.preventDefault(); setZoom(zoom - 0.15); }
+});
+
+// ─── SECTION COLLAPSE ─────────────────────────────────────────────────────────
+function togS(hd) { hd.closest('.sec').classList.toggle('cls'); }
+
+// ─── EXPORT ───────────────────────────────────────────────────────────────────
+async function expSVG() {
+  const { svgStr } = await buildSVG();
+  dlBlob(new Blob([svgStr], { type: 'image/svg+xml' }), `inktatoo_${S.physW}cm.svg`);
+}
+
+async function expPNG() {
+  const { svgStr, svgW, svgH } = await buildSVG();
+  const PPI = 300, CPI = 2.54;
+  const pxW = Math.round((S.physW / CPI) * PPI);
+  const pxH = Math.round(pxW * (svgH / svgW));
+  const canvas = document.createElement('canvas');
+  canvas.width = pxW; canvas.height = pxH;
+  const ctx = canvas.getContext('2d');
+  const url = URL.createObjectURL(new Blob([svgStr], { type: 'image/svg+xml' }));
+  const img = new Image();
+  img.onload = () => {
+    ctx.drawImage(img, 0, 0, pxW, pxH);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(b => dlBlob(b, `inktatoo_${S.physW}cm_300dpi.png`), 'image/png');
+  };
+  img.src = url;
+}
+
+async function expPDF() {
+  const { svgStr, svgW, svgH } = await buildSVG();
+  const PPI = 300, CPI = 2.54;
+  const pxW = Math.round((S.physW / CPI) * PPI);
+  const pxH = Math.round(pxW * (svgH / svgW));
+  const canvas = document.createElement('canvas');
+  canvas.width = pxW; canvas.height = pxH;
+  const ctx = canvas.getContext('2d');
+  const url = URL.createObjectURL(new Blob([svgStr], { type: 'image/svg+xml' }));
+  const img = new Image();
+  img.onload = () => {
+    ctx.drawImage(img, 0, 0, pxW, pxH);
+    URL.revokeObjectURL(url);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+    const { jsPDF } = window.jspdf;
+    const phCm = S.physW, pvCm = S.physW * svgH / svgW;
+    const pdf = new jsPDF({ orientation: phCm >= pvCm ? 'landscape' : 'portrait', unit: 'cm', format: [phCm, pvCm] });
+    pdf.addImage(dataUrl, 'JPEG', 0, 0, phCm, pvCm);
+    pdf.save(`inktatoo_${S.physW}cm.pdf`);
+  };
+  img.src = url;
+}
+
+function dlBlob(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 8000);
+}
+
+$('expSvg').onclick = expSVG;
+$('expPng').onclick = expPNG;
+$('expPdf').onclick = expPDF;
+
+// ─── PRESETS ─────────────────────────────────────────────────────────────────
+function savePreset() {
+  const name = $('preName').value.trim();
+  if (!name) return;
+  const saved = JSON.parse(localStorage.getItem('inkPresets') || '{}');
+  saved[name] = cloneS();
+  localStorage.setItem('inkPresets', JSON.stringify(saved));
+  $('preName').value = '';
+  renderPresets();
+}
+function loadPreset(name) {
+  const saved = JSON.parse(localStorage.getItem('inkPresets') || '{}');
+  if (!saved[name]) return;
+  Object.assign(S, JSON.parse(saved[name]));
+  if (rawData) resample();
+  syncUI();
+  render();
+  hPush();
+}
+function deletePreset(name) {
+  const saved = JSON.parse(localStorage.getItem('inkPresets') || '{}');
+  delete saved[name];
+  localStorage.setItem('inkPresets', JSON.stringify(saved));
+  renderPresets();
+}
+function renderPresets() {
+  const saved = JSON.parse(localStorage.getItem('inkPresets') || '{}');
+  $('plist').innerHTML = '';
+  Object.keys(saved).forEach(name => {
+    const div = document.createElement('div');
+    div.className = 'pi';
+    div.innerHTML = `<span class="pn">${esc(name)}</span>
+      <span class="pl" onclick="loadPreset('${esc(name)}')">Load</span>
+      <span class="pd" onclick="deletePreset('${esc(name)}')">Del</span>`;
+    $('plist').appendChild(div);
+  });
+}
+$('savePre').onclick = savePreset;
+
+// ─── BIND HELPERS ─────────────────────────────────────────────────────────────
+function bindRange(id, prop, dispId, transform) {
+  const el = $(id); if (!el) return;
+  el.addEventListener('input', () => {
+    const raw = parseFloat(el.value);
+    S[prop] = transform ? transform(raw) : raw;
+    if (dispId) $(dispId).textContent = transform ? Math.round(transform(raw) * 100) : el.value;
+    render();
+  });
+  el.addEventListener('change', hPush);
+}
+function bindBtnGroup(attr, prop, cb) {
+  document.querySelectorAll(`[data-${attr}]`).forEach(btn => {
+    btn.onclick = () => {
+      S[prop] = btn.dataset[attr];
+      document.querySelectorAll(`[data-${attr}]`).forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      if (cb) cb(S[prop]);
+      render(); hPush();
+    };
+  });
+}
+
+// ─── EVENT BINDINGS ──────────────────────────────────────────────────────────
+
+// Upload
+$('fi').addEventListener('change', e => e.target.files[0] && loadAudio(e.target.files[0]));
+const upz = $('upz');
+upz.addEventListener('dragover', e => { e.preventDefault(); upz.classList.add('dov'); });
+upz.addEventListener('dragleave', () => upz.classList.remove('dov'));
+upz.addEventListener('drop', e => {
+  e.preventDefault(); upz.classList.remove('dov');
+  const f2 = e.dataTransfer.files[0];
+  if (f2 && f2.type.startsWith('audio')) loadAudio(f2);
+});
+
+// Mode tabs
+document.querySelectorAll('.mb').forEach(btn => btn.onclick = () => {
+  S.mode = btn.dataset.m;
+  document.querySelectorAll('.mb').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  ['horizontal','circular','rorschach','constellation'].forEach(m => {
+    const sec = $(`sec-${m}`);
+    if (sec) sec.classList.toggle('h', m !== S.mode);
+  });
+  render(); hPush();
+});
+
+// Render style (bars / mirrored / strokes / silhouette)
+document.querySelectorAll('[data-bs]').forEach(btn => btn.onclick = () => {
+  S.barStyle = btn.dataset.bs;
+  document.querySelectorAll('[data-bs]').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  // Show/hide context-sensitive rows
+  const isSil     = S.barStyle === 'silhouette';
+  const isBarType  = S.barStyle === 'sharp' || S.barStyle === 'mirrored';
+  $('silSmoothRow').classList.toggle('h', !isSil);
+  $('barShapeRow').classList.toggle('h', !isBarType);
+  render(); hPush();
+});
+// Bar shape (sharp / rounded — only for bar types)
+bindBtnGroup('bsh', 'barShape');
+// Silhouette smoothness
+$('silSmoothS').addEventListener('input', () => {
+  S.silSmooth = parseInt($('silSmoothS').value);
+  $('smthv').textContent = S.silSmooth;
+  render();
+});
+$('silSmoothS').addEventListener('change', hPush);
+// Stroke style
+document.querySelectorAll('[data-ss]').forEach(btn => btn.onclick = () => {
+  S.strokeStyle = btn.dataset.ss;
+  document.querySelectorAll('[data-ss]').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  $('trrow').classList.toggle('h', S.strokeStyle !== 'organic');
+  render(); hPush();
+});
+bindRange('tremor', 'tremor', 'tv');
+// Circular
+bindRange('innerR', 'innerR', 'irv');
+bindRange('barL', 'barL', 'blv');
+bindRange('rotO', 'rotO', 'rov');
+// Rorschach
+bindRange('rGap', 'rGap', 'rgv');
+// Constellation
+$('showL').addEventListener('change', () => { S.showLines = $('showL').checked; render(); hPush(); });
+bindRange('dotMin', 'dotMin', 'dminv');
+bindRange('dotMax', 'dotMax', 'dmaxv');
+$('lineOp').addEventListener('input', () => { S.lineOp = parseFloat($('lineOp').value) / 100; $('lopv').textContent = $('lineOp').value; render(); });
+$('lineOp').addEventListener('change', hPush);
+// General waveform
+$('numB').addEventListener('input', () => { S.numBars = parseInt($('numB').value); $('nbv').textContent = S.numBars; resample(); render(); });
+$('numB').addEventListener('change', hPush);
+bindRange('spac', 'spacing', 'spv');
+bindRange('stkW', 'strokeW', 'swv');
+bindRange('padS', 'pad', 'padv');
+// Analysis mode (RMS / Peak)
+document.querySelectorAll('[data-am]').forEach(btn => btn.onclick = () => {
+  S.useRMS = btn.dataset.am === 'rms';
+  document.querySelectorAll('[data-am]').forEach(b => b.classList.toggle('on', b.dataset.am === (S.useRMS ? 'rms' : 'peak')));
+  resample(); render(); hPush();
+});
+// Smoothing
+$('smooth').addEventListener('input', () => { S.smooth = parseInt($('smooth').value); $('smv').textContent = S.smooth; resample(); render(); });
+$('smooth').addEventListener('change', hPush);
+// Canvas
+bindBtnGroup('ar', 'ar', v => $('cdims').classList.toggle('h', v !== 'custom'));
+$('cwI').addEventListener('change', () => { S.cw = parseInt($('cwI').value); render(); hPush(); });
+$('chI').addEventListener('change', () => { S.ch = parseInt($('chI').value); render(); hPush(); });
+bindBtnGroup('cs', 'cs');
+// Physical width
+$('physW').addEventListener('change', () => { S.physW = parseFloat($('physW').value) || 15; });
+
+// ─── SYNC UI FROM STATE (undo/redo, preset load) ──────────────────────────────
+function syncUI() {
+  // Mode
+  document.querySelectorAll('.mb').forEach(b => b.classList.toggle('on', b.dataset.m === S.mode));
+  ['horizontal','circular','rorschach','constellation'].forEach(m => {
+    const sec = $(`sec-${m}`); if (sec) sec.classList.toggle('h', m !== S.mode);
+  });
+  // Button groups
+  document.querySelectorAll('[data-bs]').forEach(b => b.classList.toggle('on', b.dataset.bs === S.barStyle));
+  document.querySelectorAll('[data-bsh]').forEach(b => b.classList.toggle('on', b.dataset.bsh === S.barShape));
+  document.querySelectorAll('[data-ss]').forEach(b => b.classList.toggle('on', b.dataset.ss === S.strokeStyle));
+  $('trrow').classList.toggle('h', S.strokeStyle !== 'organic');
+  const isSil = S.barStyle === 'silhouette';
+  const isBarType = S.barStyle === 'sharp' || S.barStyle === 'mirrored';
+  $('silSmoothRow').classList.toggle('h', !isSil);
+  $('barShapeRow').classList.toggle('h', !isBarType);
+  document.querySelectorAll('[data-ar]').forEach(b => b.classList.toggle('on', b.dataset.ar === S.ar));
+  $('cdims').classList.toggle('h', S.ar !== 'custom');
+  document.querySelectorAll('[data-cs]').forEach(b => b.classList.toggle('on', b.dataset.cs === S.cs));
+  // Analysis mode buttons
+  document.querySelectorAll('[data-am]').forEach(b => b.classList.toggle('on', b.dataset.am === (S.useRMS ? 'rms' : 'peak')));
+  // Range sliders
+  [
+    ['tremor','tremor','tv'], ['innerR','innerR','irv'], ['barL','barL','blv'],
+    ['rotO','rotO','rov'], ['rGap','rGap','rgv'], ['numB','numBars','nbv'],
+    ['spac','spacing','spv'], ['stkW','strokeW','swv'], ['padS','pad','padv'],
+    ['smooth','smooth','smv'], ['silSmoothS','silSmooth','smthv'],
+    ['dotMin','dotMin','dminv'], ['dotMax','dotMax','dmaxv'],
+  ].forEach(([id, prop, dispId]) => {
+    const el = $(id); if (!el) return;
+    el.value = S[prop];
+    if (dispId) $(dispId).textContent = S[prop];
+  });
+  $('lineOp').value = Math.round(S.lineOp * 100); $('lopv').textContent = Math.round(S.lineOp * 100);
+  // Text inputs
+  $('cwI').value = S.cw; $('chI').value = S.ch;
+  $('physW').value = S.physW;
+  // Toggles
+  $('showL').checked = S.showLines;
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function init() {
+  renderPresets();
+  render();  // shows placeholder waveform
+  hPush();
+}
+
+init();
+</script>
+</body>
+</html>
