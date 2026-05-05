@@ -215,10 +215,11 @@ select:focus{border-color:var(--acc)}
     <div id="fn" class="h"></div>
 
     <div id="mtabs">
-      <button class="mb on" data-m="horizontal">▐ Horizontal</button>
+      <button class="mb on" data-m="horizontal">▐ Bars</button>
       <button class="mb" data-m="circular">◎ Circular</button>
       <button class="mb" data-m="rorschach">⬧ Rorschach</button>
       <button class="mb" data-m="constellation">✦ Stars</button>
+      <button class="mb" data-m="soundwave" style="grid-column:span 2">∿ Sound Wave</button>
     </div>
 
     <!-- Horizontal -->
@@ -244,18 +245,6 @@ select:focus{border-color:var(--acc)}
         <div class="cr h" id="silSmoothRow">
           <div class="cl">Smoothness <em id="smthv">50</em></div>
           <input type="range" id="silSmoothS" min="0" max="100" value="50">
-        </div>
-        <div class="cr">
-          <div class="cl">Stroke</div>
-          <div class="bg">
-            <button class="btn on" data-ss="clean">Clean</button>
-            <button class="btn" data-ss="organic">Organic</button>
-          </div>
-        </div>
-        <div class="cr h" id="trrow">
-          <div class="cl">Tremor Intensity <em id="tv">2</em></div>
-          <input type="range" id="tremor" min="1" max="8" value="2" step="0.5">
-          <button class="btn bfw" id="newSeed" style="margin-top:7px">↻ New Variation</button>
         </div>
       </div>
     </div>
@@ -313,13 +302,32 @@ select:focus{border-color:var(--acc)}
       </div>
     </div>
 
+    <!-- Sound Wave -->
+    <div id="sec-soundwave" class="sec h">
+      <div class="shd" onclick="togS(this)">Sound Wave Style <span class="ch">▾</span></div>
+      <div class="sbd">
+        <div class="cr">
+          <div class="cl">Wave Style</div>
+          <div class="bg">
+            <button class="btn on" data-sws="line">Line</button>
+            <button class="btn" data-sws="filled">Filled</button>
+            <button class="btn" data-sws="mirrored">Mirrored</button>
+          </div>
+        </div>
+        <div class="cr">
+          <div class="cl">Smoothness <em id="swsv">50</em></div>
+          <input type="range" id="swSmth" min="0" max="100" value="50">
+        </div>
+      </div>
+    </div>
+
     <!-- Waveform -->
     <div class="sec">
       <div class="shd" onclick="togS(this)">Waveform <span class="ch">▾</span></div>
       <div class="sbd">
         <div class="cr">
           <div class="cl">Bars / Points <em id="nbv">80</em></div>
-          <input type="range" id="numB" min="20" max="200" value="80">
+          <input type="range" id="numB" min="20" max="300" value="80">
         </div>
         <div class="cr">
           <div class="cl">Spacing <em id="spv">2</em>px</div>
@@ -343,6 +351,18 @@ select:focus{border-color:var(--acc)}
         <div class="cr">
           <div class="cl">Smoothing <em id="smv">0</em></div>
           <input type="range" id="smooth" min="0" max="12" value="0" step="1">
+        </div>
+        <div class="cr" style="margin-top:6px">
+          <div class="cl">Stroke Style</div>
+          <div class="bg">
+            <button class="btn on" data-ss="clean">Clean</button>
+            <button class="btn" data-ss="organic">Organic</button>
+          </div>
+        </div>
+        <div class="cr h" id="trrow">
+          <div class="cl">Tremor Intensity <em id="tv">2</em></div>
+          <input type="range" id="tremor" min="1" max="8" value="2" step="0.5">
+          <button class="btn bfw" id="newSeed" style="margin-top:7px">↻ New Variation</button>
         </div>
       </div>
     </div>
@@ -496,6 +516,9 @@ const S = {
   rGap: 20,
   // Constellation
   showLines: true, dotMin: 2, dotMax: 8, lineOp: 0.5,
+  // Sound Wave
+  swStyle: 'line',  // 'line' | 'filled' | 'mirrored'
+  swSmooth: 50,
   // General waveform
   numBars: 80, spacing: 2, strokeW: 2, pad: 20, useRMS: false, smooth: 0,
   // Canvas
@@ -544,6 +567,7 @@ document.addEventListener('keydown', e => {
 
 // ─── AUDIO ───────────────────────────────────────────────────────────────────
 let rawData = null;
+let bipolarData = null;
 
 async function loadAudio(file) {
   if (file.size > 100 * 1024 * 1024) {
@@ -600,7 +624,8 @@ function resample() {
     }
   }
   // Normalize
-  const peak = Math.max(...out, 1e-6);
+  let peak = 1e-6;
+  for (let i = 0; i < n; i++) { if (out[i] > peak) peak = out[i]; }
   for (let i = 0; i < n; i++) out[i] /= peak;
   // Smoothing: moving average over ±k neighbors
   const k = Math.round(S.smooth);
@@ -615,12 +640,55 @@ function resample() {
   } else {
     S.audioData = out;
   }
+  bipolarData = resampleBipolar();
+}
+
+function resampleBipolar() {
+  if (!rawData) return null;
+  const n = S.numBars;
+  const bs = Math.max(1, Math.floor(rawData.length / n));
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    // Take center sample of each bin to preserve oscillation character
+    const mid = Math.min(i * bs + (bs >> 1), rawData.length - 1);
+    out[i] = rawData[mid];
+  }
+  // Normalize by peak absolute value
+  let peak = 1e-6;
+  for (let i = 0; i < n; i++) { const v = Math.abs(out[i]); if (v > peak) peak = v; }
+  for (let i = 0; i < n; i++) out[i] /= peak;
+  // Smoothing
+  const k = Math.round(S.smooth);
+  if (k > 0) {
+    const sm = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      let sum = 0, cnt = 0;
+      for (let j = Math.max(0, i - k); j <= Math.min(n - 1, i + k); j++) { sum += out[j]; cnt++; }
+      sm[i] = sum / cnt;
+    }
+    return sm;
+  }
+  return out;
 }
 
 function placeholder(n) {
   const a = new Float32Array(n);
   for (let i = 0; i < n; i++) a[i] = 0.15 + 0.75 * Math.pow(Math.abs(Math.sin(i * 0.22 + 0.5)), 0.7);
-  const pk = Math.max(...a, 1e-6);
+  let pk = 1e-6;
+  for (let i = 0; i < n; i++) { if (a[i] > pk) pk = a[i]; }
+  for (let i = 0; i < n; i++) a[i] /= pk;
+  return a;
+}
+
+function placeholderBipolar(n) {
+  const a = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const t = i / n;
+    const env = Math.sin(t * Math.PI) * 0.85 + 0.15;
+    a[i] = env * Math.sin(i * 0.75 + Math.sin(i * 0.09) * 1.5);
+  }
+  let pk = 1e-6;
+  for (let i = 0; i < n; i++) { const v = Math.abs(a[i]); if (v > pk) pk = v; }
   for (let i = 0; i < n; i++) a[i] /= pk;
   return a;
 }
@@ -874,6 +942,48 @@ function genConstellation(data, w, h, fg) {
   return out;
 }
 
+function genSoundWave(data, w, h, fg) {
+  const n = data.length;
+  const p = S.pad;
+  const aW = w - p * 2;
+  const cy = h / 2;
+  const halfH = (h - p * 2) / 2 * 0.92;
+  const step = aW / Math.max(1, n - 1);
+  const tension = S.swSmooth / 100 * 2;
+  const organic = S.strokeStyle === 'organic';
+  const rng = organic ? seededRNG(S.seed) : null;
+  const rv = () => organic ? (rng() - 0.5) * 2 * S.tremor : 0;
+
+  if (S.swStyle === 'mirrored') {
+    // Classic audio editor look: symmetric filled envelope
+    const topPts = [], botPts = [];
+    for (let i = 0; i < n; i++) {
+      const x = p + i * step + rv() * 0.2;
+      const hh = Math.max(0.5, Math.abs(data[i]) * halfH);
+      topPts.push({ x, y: cy - hh + rv() * 0.4 });
+      botPts.push({ x, y: cy + hh + rv() * 0.4 });
+    }
+    const topD = crPath(topPts, tension);
+    const botD = crContinue([...botPts].reverse(), tension);
+    return `<path d="${topD} ${botD} Z" fill="${fg}" stroke="none"/>`;
+  }
+
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    pts.push({ x: p + i * step + rv() * 0.2, y: cy - data[i] * halfH + rv() * 0.5 });
+  }
+  const d = crPath(pts, tension);
+
+  if (S.swStyle === 'filled') {
+    // Fill between waveform and zero line
+    const ex = f(p + (n - 1) * step);
+    return `<path d="${d} L${ex},${f(cy)} L${f(p)},${f(cy)} Z" fill="${fg}" stroke="none"/>`;
+  }
+
+  // Line: continuous oscillating stroke
+  return `<path d="${d}" fill="none" stroke="${fg}" stroke-width="${f(S.strokeW)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+
 // ─── MAIN SVG BUILDER ─────────────────────────────────────────────────────────
 
 async function buildSVG() {
@@ -887,6 +997,7 @@ async function buildSVG() {
     case 'circular':      waveRaw = genCircular(data, w, h, fg); break;
     case 'rorschach':     waveRaw = genRorschach(data, w, h, fg); break;
     case 'constellation': waveRaw = genConstellation(data, w, h, fg); break;
+    case 'soundwave':     waveRaw = genSoundWave(bipolarData || placeholderBipolar(S.numBars), w, h, fg); break;
   }
 
   const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
@@ -1190,7 +1301,7 @@ document.querySelectorAll('.mb').forEach(btn => btn.onclick = () => {
   S.mode = btn.dataset.m;
   document.querySelectorAll('.mb').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
-  ['horizontal','circular','rorschach','constellation'].forEach(m => {
+  ['horizontal','circular','rorschach','constellation','soundwave'].forEach(m => {
     const sec = $(`sec-${m}`);
     if (sec) sec.classList.toggle('h', m !== S.mode);
   });
@@ -1239,6 +1350,14 @@ bindRange('dotMin', 'dotMin', 'dminv');
 bindRange('dotMax', 'dotMax', 'dmaxv');
 $('lineOp').addEventListener('input', () => { S.lineOp = parseFloat($('lineOp').value) / 100; $('lopv').textContent = $('lineOp').value; render(); });
 $('lineOp').addEventListener('change', hPush);
+// Sound Wave
+document.querySelectorAll('[data-sws]').forEach(btn => btn.onclick = () => {
+  S.swStyle = btn.dataset.sws;
+  document.querySelectorAll('[data-sws]').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  render(); hPush();
+});
+bindRange('swSmth', 'swSmooth', 'swsv');
 // General waveform
 $('numB').addEventListener('input', () => { S.numBars = parseInt($('numB').value); $('nbv').textContent = S.numBars; resample(); render(); });
 $('numB').addEventListener('change', hPush);
@@ -1266,13 +1385,14 @@ $('physW').addEventListener('change', () => { S.physW = parseFloat($('physW').va
 function syncUI() {
   // Mode
   document.querySelectorAll('.mb').forEach(b => b.classList.toggle('on', b.dataset.m === S.mode));
-  ['horizontal','circular','rorschach','constellation'].forEach(m => {
+  ['horizontal','circular','rorschach','constellation','soundwave'].forEach(m => {
     const sec = $(`sec-${m}`); if (sec) sec.classList.toggle('h', m !== S.mode);
   });
   // Button groups
   document.querySelectorAll('[data-bs]').forEach(b => b.classList.toggle('on', b.dataset.bs === S.barStyle));
   document.querySelectorAll('[data-bsh]').forEach(b => b.classList.toggle('on', b.dataset.bsh === S.barShape));
   document.querySelectorAll('[data-ss]').forEach(b => b.classList.toggle('on', b.dataset.ss === S.strokeStyle));
+  document.querySelectorAll('[data-sws]').forEach(b => b.classList.toggle('on', b.dataset.sws === S.swStyle));
   $('trrow').classList.toggle('h', S.strokeStyle !== 'organic');
   const isSil = S.barStyle === 'silhouette';
   const isBarType = S.barStyle === 'sharp' || S.barStyle === 'mirrored';
@@ -1290,6 +1410,7 @@ function syncUI() {
     ['spac','spacing','spv'], ['stkW','strokeW','swv'], ['padS','pad','padv'],
     ['smooth','smooth','smv'], ['silSmoothS','silSmooth','smthv'],
     ['dotMin','dotMin','dminv'], ['dotMax','dotMax','dmaxv'],
+    ['swSmth','swSmooth','swsv'],
   ].forEach(([id, prop, dispId]) => {
     const el = $(id); if (!el) return;
     el.value = S[prop];
